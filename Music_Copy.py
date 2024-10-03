@@ -6,6 +6,7 @@ from pydub import AudioSegment
 import subprocess
 import json
 import abc
+from PidManager import PidManager
 
 COMMAND_SUCC = 0
 COMMAND_FAILED = 1
@@ -68,6 +69,7 @@ class RhythmCommander:
         self.command = command
 
         self.commandChecker = CommandChecker()
+        self.pidManager = PidManager()
     
     def _PlayRhythm(self, rhythmStatus):
         print("Ready to play")
@@ -86,7 +88,7 @@ class RhythmCommander:
         time.sleep(5)
 
     def _KillOldRhythm(self):
-        pid = self._GetPid()
+        pid = self.pidManager.GetPid()
         if pid != "":
             try:
                 commandStream = 'taskkill /pid ' + pid + ' /f'
@@ -104,15 +106,6 @@ class RhythmCommander:
         except:
             return (COMMAND_FAILED, [" "])
 
-    def _GetPid(self) -> str:
-        file = open("E:/python/Music/PID.txt", "r")
-        pid = file.readline()
-        file.close()
-        return pid
-
-    def _CleanPidFile(self):
-        file = open("E:/python/Music/PID.txt", "w")
-        file.close()
 
     @abc.abstractmethod
     def OperateCommand(self) -> tuple():
@@ -135,7 +128,7 @@ class ShowHelp(RhythmCommander):
         print("Input Format:")
         print("    A string witch is a prefix of a rhythm name + space + Looptime(Default 10) + space + Volume(Default 0.5)")
 
-        return (COMMAND_SUCC, self.newRhythmStatushythmStatus)
+        return (COMMAND_SUCC, self.newRhythmStatus)
 
 class StopRhythm(RhythmCommander):
 
@@ -150,10 +143,10 @@ class StopRhythm(RhythmCommander):
     
     def OperateCommand(self) -> tuple():
         if (self.rhythmStatus.isPlaying == 1):
-            pid = self._GetPid()
+            pid = self.pidManager.GetPid()
             self.__StopRhythm(pid)
             self.UpdateNewRhythmStatus()
-            self._CleanPidFile()
+            self.pidManager.CleanPidFile()
         else:
             print("No Music is Playing")
         
@@ -167,7 +160,7 @@ class PauseRhythm(RhythmCommander):
     
     def OperateCommand(self) -> tuple():
         if self.rhythmStatus.isPlaying == 1:
-            pid = self._GetPid()
+            pid = self.pidManager.GetPid()
             commandStream = "pssuspend64.exe" + " " + pid
             os.system(commandStream)
             self.UpdateNewRhythmStatus()
@@ -182,7 +175,7 @@ class RestartRhythm(RhythmCommander):
 
     def OperateCommand(self) -> tuple():
         if self.rhythmStatus.isPaused == 1:
-            pid = self._GetPid()
+            pid = self.pidManager.GetPid()
             commandStream = "pssuspend64.exe" + " " + pid + " " + "-r"
             os.system(commandStream)
             self.UpdateNewRhythmStatus()
@@ -201,7 +194,7 @@ class ShowAllRhythm(RhythmCommander):
 
 class ShowStatus(RhythmCommander):
     def OperateCommand(self) -> tuple():
-        pid = self._GetPid()
+        pid = self.pidManager.GetPid()
         if pid != "":
             if self.rhythmStatus.isPaused == 1:
                 print("%-25s%s" % ("Rhythm is Pasued : ", self.rhythmStatus.rhythm))
@@ -575,6 +568,9 @@ class SheetOperator:
     def MainProcess(self):
         while True:
             command = self.__GetCommand()
+            if command[0] == "":
+                print("Input is None, please input again")
+                continue
             commander = self.__GetCommander(command)
 
             ret = commander.OperateCommand()
@@ -585,6 +581,9 @@ class SheetOperator:
 if __name__ == '__main__':
     with open("E:/python/Music/Path.json") as text:
         pathFile = json.load(text)
+
+    pidManager = PidManager()
+    pidManager.CleanPidFile()
 
     rhythmSheet = SheetOperator(pathFile)
 

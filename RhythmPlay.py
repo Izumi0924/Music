@@ -4,6 +4,7 @@ from pygame import mixer
 import pygame
 import time
 import json
+from PidManager import PidManager
 
 def play(Sleeptime, Path, LoopTime):
     mixer.music.load(Path)
@@ -17,14 +18,14 @@ def play(Sleeptime, Path, LoopTime):
 if __name__ == "__main__":
     with open("E:/python/Music/Path.json") as text:
         PathFIle = json.load(text)
+    pidManager = PidManager()
+
     mixer.init()
     pygame.init()
     LoopTime = int(sys.argv[1])
     volume = float(sys.argv[2])
-
-    file = open(PathFIle["PIDPath"], "w")  # 获取PID并输出
-    file.write(str(os.getpid()))
-    file.close()
+    # 记录PID
+    pidManager.RecordPid(str(os.getpid()))
 
     PreludeLength = float(sys.argv[3])
     LoopLength = float(sys.argv[4])
@@ -34,6 +35,5 @@ if __name__ == "__main__":
     play(PreludeLength, PathFIle["PreludePath"], 1)
     play(LoopLength, PathFIle["LoopPath"], LoopTime)
     play(EpisodeLength, PathFIle["EpisodePath"], 1,)
-
-    file = open(PathFIle["PIDPath"], "w")  # 获取PID并输出
-    file.close()
+    # 播放完成后，要清空PID
+    pidManager.CleanPidFile()
